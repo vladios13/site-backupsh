@@ -17,7 +17,9 @@ echo "[--------------------------------[`date +%F-%H-%M`]-----------------------
 echo "[----------][`date +%F--%H-%M`] Запуск бэкап проекта ..."
 mkdir $DATADIR/$PREFIX 2> /dev/null
 echo "[++--------][`date +%F--%H-%M`] Делаем дамп базы данных..."
+
 #Дамп MySQL
+
 mysqldump --user=$USER --host=$HOST --password=$PASSWD --default-character-set=$CHARSET $DBNAME | gzip> $DATADIR/$PREFIX/$DBFILENAME-`date +%F--%H-%M`.sql.gz
 if [[ $? -gt 0 ]];then
 echo "[++--------][`date +%F--%H-%M`] Упс, ошибка создания дампа базы данных."
@@ -36,17 +38,15 @@ fi
 echo "[++++++++--][`date +%F--%H-%M`] Создание резервной копии [$PROJNAME] успешно."
 echo "[+++++++++-][`date +%F--%H-%M`] Общий вес каталога: `du -h $DATADIR | tail -n1`"
 echo "[+++++++++-][`date +%F--%H-%M`] Свободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`"
-
 echo "[+++++++++-][`date +%F--%H-%M`] Отправляю сообщение в Telegram."
 
-#отправляем в телегу об успешности выполнения
+#Отправляем в Teleram уведомление
 TOKEN=
 CHAT_ID=
 MESSAGE="[`date +%F-%H-%M`]%0AСоздание резервной копии [$PROJNAME] успешно.%0AСвободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`%0AОбщий вес каталога: `du -h $DATADIR | tail -n1`"
 URL="https://api.telegram.org/bot$TOKEN/sendMessage"
 
 curl -s -X POST $URL -d chat_id=$CHAT_ID -d text="$MESSAGE"
-sleep 1
-echo "[++++++++++][`date +%F--%H-%M`] Все операции успешно выполнены."
 echo "[++++++++++][`date +%F--%H-%M`] Уведомление в Telegram отправлено."
+echo "[++++++++++][`date +%F--%H-%M`] Все операции успешно выполнены."
 exit 0
