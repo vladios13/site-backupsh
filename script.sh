@@ -40,7 +40,7 @@ echo "[+++++++++-][`date +%F--%H-%M`] Общий вес каталога: `du -h
 echo "[+++++++++-][`date +%F--%H-%M`] Свободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`"
 echo "[+++++++++-][`date +%F--%H-%M`] Отправляю сообщение в Telegram."
 
-#Отправляем в Teleram уведомление
+#Отправляем в Telegram уведомление
 TOKEN=
 CHAT_ID=
 MESSAGE="[`date +%F-%H-%M`]%0AСоздание резервной копии [$PROJNAME] успешно.%0AСвободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`%0AОбщий вес каталога: `du -h $DATADIR | tail -n1`"
