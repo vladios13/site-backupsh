@@ -20,4 +20,13 @@ PASSWD= #Пароль от базы данных
 ------------
 
 Пример уведомления в Telegram:
+
 ![](https://i.13.wf/2020/07/27/1595858056-1579.jpg "Пример уведомления в Telegram")
+
+
+------------
+
+
+### vladios13
+[Блог vladios13](http://blog.vladios13.com)
+[Telegram](https://t.me/vladios13blog)
