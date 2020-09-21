@@ -28,7 +28,7 @@ echo "[++--------][`date +%F--%H-%M`] Делаем дамп базы данны�
 
 # Дамп MySQL
 
-mysqldump --user=$USER --host=$HOST --password=$PASSWD --default-character-set=$CHARSET $DBNAME | gzip> $DATADIR/$PREFIX/$DBFILENAME-`date +%F--%H-%M`.sql.gz
+mysqldump --user=$USER --host=$HOST --password=$PASSWD -l --default-character-set=$CHARSET $DBNAME | gzip> $DATADIR/$PREFIX/$DBFILENAME-`date +%F--%H-%M`.sql.gz
 if [[ $? -gt 0 ]];then
 echo "[++--------][`date +%F--%H-%M`] Упс, ошибка создания дампа базы данных."
 exit 1
