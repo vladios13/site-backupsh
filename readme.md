@@ -31,3 +31,6 @@ PASSWD= #Пароль от базы данных
 [Блог vladios13](http://blog.vladios13.com)
 
 [Telegram](https://t.me/vladios13blog)
+
+Для пожертвований:
+- [Яндекс.Деньги](https://money.yandex.ru/to/410011568729023 "Яндекс.Деньги")
