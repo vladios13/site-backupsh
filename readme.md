@@ -28,7 +28,7 @@ PASSWD= #Пароль от базы данных
 
 
 ### vladios13
-[Блог vladios13](http://blog.vladios13.com)
+[Блог vladios13](https://blog.vladios13.com/site-backupsh/)
 
 [Telegram](https://t.me/vladios13blog)
 
