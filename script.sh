@@ -82,7 +82,8 @@ CHAT_ID=                    # ID чата для уведомлений.
 MESSAGE="[$STAMP]%0AСоздание резервной копии [$PROJNAME] успешно.%0AСвободное место на диске: $DISKFREE%0AОбщий вес каталога: $DIRSIZE"
 URL="https://api.telegram.org/bot$TOKEN/sendMessage"
 
-curl -s -X POST $URL -d chat_id=$CHAT_ID -d text="$MESSAGE"
-echo "[++++++++++][`date +%F--%H-%M`] Уведомление в Telegram отправлено."
-echo "[++++++++++][`date +%F--%H-%M`] Все операции успешно выполнены."
-exit 0;
+curl -s --max-time 15 --retry 2 -X POST "$URL" \
+    -d chat_id="$CHAT_ID" -d text="$MESSAGE"
+echo "[++++++++++][$STAMP] Уведомление в Telegram отправлено."
+echo "[++++++++++][$STAMP] Все операции успешно выполнены."
+exit 0
