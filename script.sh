@@ -1,58 +1,85 @@
 #!/bin/bash
 
-#        _           _ _           _ _____ 
-# __   _| | __ _  __| (_) ___  ___/ |___ / 
-# \ \ / / |/ _` |/ _` | |/ _ \/ __| | |_ \ 
+#        _           _ _           _ _____
+# __   _| | __ _  __| (_) ___  ___/ |___ /
+# \ \ / / |/ _` |/ _` | |/ _ \/ __| | |_ \
 #  \ V /| | (_| | (_| | | (_) \__ \ |___) |
-#   \_/ |_|\__,_|\__,_|_|\___/|___/_|____/ 
+#   \_/ |_|\__,_|\__,_|_|\___/|___/_|____/
 
+set -euo pipefail
 
-PROJNAME=                   # Название бэкап проекта.
-CHARSET=                    # Кодировка базы данных (utf8).
-DBNAME=                     # Имя базы данных для резервного копирования.
-DBFILENAME=                 # Имя дампа базы данных.
-ARFILENAME=                 # Имя архива с файлами.
-HOST=                       # Хост MySQL.
-USER=                       # Имя пользователя базы данных.
-PASSWD=                     # Пароль от базы данных.
-DATADIR=/backup/               #Путь к каталогу где будут храниться резервные копии.
-SRCFILES=                   # Путь к каталогу файлов для архивирования.
-PREFIX=`date +%F`                   # Префикс по дате для структурирования резервных копий.
+# ── Настройки (заполните под свой проект) ──────────────────────────────
+PROJNAME=                   # Название проекта (для логов и уведомления).
+DBNAME=                     # Имя базы данных.
+USER=                       # Пользователь MySQL.
+PASSWD=                     # Пароль MySQL.
+HOST=localhost              # Хост MySQL.
+CHARSET=utf8                # Кодировка базы данных.
+SRCFILES=                   # Каталог с файлами для архивации (например /var/www/site).
+DATADIR=/backup             # Куда складывать резервные копии.
+DBFILENAME=db               # Базовое имя файла дампа БД.
+ARFILENAME=files            # Базовое имя файла архива.
+RETENTION_DAYS=14           # Сколько дней хранить копии (0 — не удалять).
 
-# Запуск проекта:
+PREFIX=$(date +%F)          # Подкаталог по дате: ГГГГ-ММ-ДД.
+STAMP=$(date +%F--%H-%M)    # Метка времени в именах файлов и логах.
 
-echo "[--------------------------------[`date +%F-%H-%M`]--------------------------------]"
-echo "[----------][`date +%F--%H-%M`] Запуск бэкап проекта ..."
-mkdir $DATADIR/$PREFIX 2> /dev/null
-echo "[++--------][`date +%F--%H-%M`] Делаем дамп базы данных..."
+# ── Старт ──────────────────────────────────────────────────────────────
 
-# Дамп MySQL
+echo "[--------------------------------[$STAMP]--------------------------------]"
+echo "[----------][$STAMP] Запуск бэкап проекта ..."
+mkdir -p "$DATADIR/$PREFIX"
+echo "[++--------][$STAMP] Делаем дамп базы данных..."
 
-mysqldump --user=$USER --host=$HOST --password=$PASSWD -l --default-character-set=$CHARSET $DBNAME | gzip> $DATADIR/$PREFIX/$DBFILENAME-`date +%F--%H-%M`.sql.gz
-if [[ $? -gt 0 ]];then
-echo "[++--------][`date +%F--%H-%M`] Упс, ошибка создания дампа базы данных."
-exit 1
+# ── Дамп базы данных ───────────────────────────────────────────────────
+DUMPFILE="$DATADIR/$PREFIX/$DBFILENAME-$STAMP.sql.gz"
+if ! mysqldump --user="$USER" --host="$HOST" --password="$PASSWD" -l \
+        --default-character-set="$CHARSET" "$DBNAME" | gzip > "$DUMPFILE"; then
+    echo "[++--------][$STAMP] Упс, ошибка создания дампа базы данных."
+    exit 1
 fi
-echo "[++++------][`date +%F--%H-%M`] Дамп базы данных [$DBNAME] - успешно выполнен."
-echo "[++++++----][`date +%F--%H-%M`] Делаю дамп [$PROJNAME]..."
-
-# Дамп файлов
-
-tar -czpf $DATADIR/$PREFIX/$ARFILENAME-`date +%F--%H-%M`.tar.gz $SRCFILES 2> /dev/null
-if [[ $? -gt 0 ]];then
-echo "[++++++----][`date +%F--%H-%M`] Упс, ошибка при создания дампа файлов."
-exit 1
+if [[ ! -s "$DUMPFILE" ]]; then
+    echo "[++--------][$STAMP] Упс, дамп базы данных пуст."
+    exit 1
 fi
-echo "[++++++++--][`date +%F--%H-%M`] Создание резервной копии [$PROJNAME] успешно."
-echo "[+++++++++-][`date +%F--%H-%M`] Общий вес каталога: `du -h $DATADIR | tail -n1`"
-echo "[+++++++++-][`date +%F--%H-%M`] Свободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`"
-echo "[+++++++++-][`date +%F--%H-%M`] Отправляю сообщение в Telegram."
+echo "[++++------][$STAMP] Дамп базы данных [$DBNAME] - успешно выполнен."
+echo "[++++++----][$STAMP] Делаю дамп [$PROJNAME]..."
 
-# Отправляем уведомление в Telegram
+# ── Архив файлов ───────────────────────────────────────────────────────
+ARFILE="$DATADIR/$PREFIX/$ARFILENAME-$STAMP.tar.gz"
+TAR_RC=0
+# -C: пакуем относительными путями (без ведущего "/").
+tar -czpf "$ARFILE" -C "$(dirname "$SRCFILES")" "$(basename "$SRCFILES")" || TAR_RC=$?
+# Код tar: 0 — успех, 1 — файлы менялись при чтении (архив создан), ≥2 — ошибка.
+if [[ "$TAR_RC" -ge 2 ]]; then
+    echo "[++++++----][$STAMP] Упс, ошибка при создания дампа файлов."
+    exit 1
+elif [[ "$TAR_RC" -eq 1 ]]; then
+    echo "[++++++----][$STAMP] Внимание: часть файлов менялась во время чтения, архив создан."
+fi
+if [[ ! -s "$ARFILE" ]]; then
+    echo "[++++++----][$STAMP] Упс, архив файлов пуст."
+    exit 1
+fi
+echo "[++++++++--][$STAMP] Создание резервной копии [$PROJNAME] успешно."
 
-TOKEN= # Token telegram бота (получаем у @Botfather)
-CHAT_ID= # ID чата куда отправлять сообщение
-MESSAGE="[`date +%F-%H-%M`]%0AСоздание резервной копии [$PROJNAME] успешно.%0AСвободное место на диске: `df -h /home|tail -n1|awk '{print $4}'`%0AОбщий вес каталога: `du -h $DATADIR | tail -n1`"
+# ── Удаление старых копий ──────────────────────────────────────────────
+if [[ "${RETENTION_DAYS:-0}" -gt 0 ]]; then
+    echo "[++++++++--][$STAMP] Удаляю бэкапы старше $RETENTION_DAYS дн..."
+    find "$DATADIR" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" \
+        -exec rm -rf {} +
+fi
+
+DISKFREE=$(df -h "$DATADIR" | tail -n1 | awk '{print $4}')
+DIRSIZE=$(du -h "$DATADIR" | tail -n1)
+echo "[+++++++++-][$STAMP] Общий вес каталога: $DIRSIZE"
+echo "[+++++++++-][$STAMP] Свободное место на диске: $DISKFREE"
+echo "[+++++++++-][$STAMP] Отправляю сообщение в Telegram."
+
+# ── Уведомление в Telegram ─────────────────────────────────────────────
+TOKEN=                      # Токен бота (получить у @BotFather).
+CHAT_ID=                    # ID чата для уведомлений.
+MESSAGE="[$STAMP]%0AСоздание резервной копии [$PROJNAME] успешно.%0AСвободное место на диске: $DISKFREE%0AОбщий вес каталога: $DIRSIZE"
 URL="https://api.telegram.org/bot$TOKEN/sendMessage"
 
 curl -s -X POST $URL -d chat_id=$CHAT_ID -d text="$MESSAGE"
